@@ -1,45 +1,38 @@
-#include <iostream>
-#include <glad/glad.h>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <iostream>
+#include <cstdlib>
 
-// Vertex shader source code
-const char* vertexShaderSource = R"(
-    #version 330 core
-    layout (location = 0) in vec3 aPos;
-    void main() {
-        gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-    }
-)";
+#define SCREEN_WIDTH 640
+#define SCREEN_HEIGHT 480
 
-// Fragment shader source code for blue square
-const char* fragmentShaderBlueSource = R"(
-    #version 330 core
-    out vec4 FragColor;
-    void main() {
-        FragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f); // Blue color
-    }
-)";
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloat edgeLength);
 
-// Fragment shader source code for yellow triangle
-const char* fragmentShaderYellowSource = R"(
-    #version 330 core
-    out vec4 FragColor;
-    void main() {
-        FragColor = vec4(1.0f, 1.0f, 0.0f, 1.0f); // Yellow color
-    }
-)";
+GLfloat rotationX = 0.0f;
+GLfloat rotationY = 0.0f;
 
-int main() {
-    // Initialize GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
+int main(void)
+{
+    GLFWwindow* window;
+
+    // Initialize the library
+    if (!glfwInit())
+    {
         return -1;
     }
 
-    // Create a GLFW window
-    GLFWwindow* window = glfwCreateWindow(800, 600, "OpenGL Window", NULL, NULL);
-    if (window == NULL) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
+    // Create a windowed mode window and its OpenGL context
+    window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Hello World", NULL, NULL);
+
+    glfwSetKeyCallback(window, keyCallback);
+    glfwSetInputMode(window, GLFW_STICKY_KEYS, 1);
+
+    int screenWidth, screenHeight;
+    glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
+
+    if (!window)
+    {
         glfwTerminate();
         return -1;
     }
@@ -47,141 +40,160 @@ int main() {
     // Make the window's context current
     glfwMakeContextCurrent(window);
 
-    // Initialize GLAD
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cerr << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
+    glViewport(0.0f, 0.0f, screenWidth, screenHeight);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, 0, 1000);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 
-    // Vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
+    GLfloat halfScreenWidth = SCREEN_WIDTH / 2;
+    GLfloat halfScreenHeight = SCREEN_HEIGHT / 2;
 
-    // Fragment shader for blue square
-    GLuint fragmentShaderBlue = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShaderBlue, 1, &fragmentShaderBlueSource, NULL);
-    glCompileShader(fragmentShaderBlue);
-
-    // Fragment shader for yellow triangle
-    GLuint fragmentShaderYellow = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShaderYellow, 1, &fragmentShaderYellowSource, NULL);
-    glCompileShader(fragmentShaderYellow);
-
-    // Shader program for blue square
-    GLuint shaderProgramBlue = glCreateProgram();
-    glAttachShader(shaderProgramBlue, vertexShader);
-    glAttachShader(shaderProgramBlue, fragmentShaderBlue);
-    glLinkProgram(shaderProgramBlue);
-    glUseProgram(shaderProgramBlue);
-
-    // Shader program for yellow triangle
-    GLuint shaderProgramYellow = glCreateProgram();
-    glAttachShader(shaderProgramYellow, vertexShader);
-    glAttachShader(shaderProgramYellow, fragmentShaderYellow);
-    glLinkProgram(shaderProgramYellow);
-
-    // Vertex data for the square
-    float squareVertices[] = {
-        -0.5f, -0.5f, 0.0f, // Bottom-left
-         0.5f, -0.5f, 0.0f, // Bottom-right
-         0.5f,  0.5f, 0.0f, // Top-right
-        -0.5f,  0.5f, 0.0f  // Top-left
-    };
-
-    // Vertex indices for the square
-    unsigned int squareIndices[] = {
-        0, 1, 2, // First triangle
-        2, 3, 0  // Second triangle
-    };
-
-    // Vertex data for the triangle
-    float triangleVertices[] = {
-        0.5f, -0.5f, 0.0f, // Bottom-right
-         0.75f, -0.5f, 0.0f, // Bottom-right
-         0.625f,  -0.25f, 0.0f, // Top-right
-    };
-
-    // Vertex buffer objects (VBOs) and vertex array objects (VAOs) for the square
-    GLuint squareVBO, squareVAO, squareEBO;
-    glGenVertexArrays(1, &squareVAO);
-    glGenBuffers(1, &squareVBO);
-    glGenBuffers(1, &squareEBO);
-
-    // Bind the square VAO
-    glBindVertexArray(squareVAO);
-
-    // Bind the square VBO and set its data
-    glBindBuffer(GL_ARRAY_BUFFER, squareVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(squareVertices), squareVertices, GL_STATIC_DRAW);
-
-    // Bind the square EBO and set its data
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, squareEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(squareIndices), squareIndices, GL_STATIC_DRAW);
-
-    // Set the vertex attribute pointers for the square
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // Unbind the square VAO
-    glBindVertexArray(0);
-
-    // Vertex buffer objects (VBOs) and vertex array objects (VAOs) for the triangle
-    GLuint triangleVBO, triangleVAO;
-    glGenVertexArrays(1, &triangleVAO);
-    glGenBuffers(1, &triangleVBO);
-
-    // Bind the triangle VAO
-    glBindVertexArray(triangleVAO);
-
-    // Bind the triangle VBO and set its data
-    glBindBuffer(GL_ARRAY_BUFFER, triangleVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(triangleVertices), triangleVertices, GL_STATIC_DRAW);
-
-    // Set the vertex attribute pointers for the triangle
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // Unbind the triangle VAO
-    glBindVertexArray(0);
-
-    // Rendering loop
-    while (!glfwWindowShouldClose(window)) {
-        // Process input
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetWindowShouldClose(window, true);
-
-        // Clear the color buffer
+    // Loop until the user closes the window
+    while (!glfwWindowShouldClose(window))
+    {
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Draw the square with blue color
-        glUseProgram(shaderProgramBlue);
-        glBindVertexArray(squareVAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // Render OpenGL here
 
-        // Draw the triangle with yellow color
-        glUseProgram(shaderProgramYellow);
-        glBindVertexArray(triangleVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glPushMatrix();
+        glTranslatef(halfScreenWidth, halfScreenHeight, -500);
+        glRotatef(rotationX, 1, 0, 0);
+        glRotatef(rotationY, 0, 1, 0);
+        glTranslatef(-halfScreenWidth, -halfScreenHeight, 500);
 
-        // Swap buffers and poll IO events
+        DrawCube(halfScreenWidth, halfScreenHeight, -500, 200);
+
+        glPopMatrix();
+
+        // Swap front and back buffers
         glfwSwapBuffers(window);
+
+        // Poll for and process events
         glfwPollEvents();
     }
 
-    // Clean up
-    glDeleteVertexArrays(1, &squareVAO);
-    glDeleteBuffers(1, &squareVBO);
-    glDeleteBuffers(1, &squareEBO);
-    glDeleteVertexArrays(1, &triangleVAO);
-    glDeleteBuffers(1, &triangleVBO);
-    glDeleteProgram(shaderProgramBlue);
-    glDeleteProgram(shaderProgramYellow);
-    glDeleteShader(fragmentShaderBlue);
-    glDeleteShader(fragmentShaderYellow);
-    glDeleteShader(vertexShader);
-
-    // Terminate GLFW
     glfwTerminate();
+
     return 0;
+}
+
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    const GLfloat rotationSpeed = 10;
+
+    if (action == GLFW_PRESS || action == GLFW_REPEAT)
+    {
+        switch (key)
+        {
+        case GLFW_KEY_UP:
+            rotationX -= rotationSpeed;
+            break;
+        case GLFW_KEY_DOWN:
+            rotationX += rotationSpeed;
+            break;
+        case GLFW_KEY_RIGHT:
+            rotationY += rotationSpeed;
+            break;
+        case GLFW_KEY_LEFT:
+            rotationY -= rotationSpeed;
+            break;
+        }
+    }
+}
+
+void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloat edgeLength)
+{
+    GLfloat halfSideLength = edgeLength * 0.5f;
+
+    GLfloat vertices[] =
+    {
+        // Front face (red)
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
+        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top right
+        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom right
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
+
+        // Back face (green)
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top left
+        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
+        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom left
+
+        // Left face (blue)
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
+
+        // Right face (yellow)
+        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
+        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
+        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
+        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
+
+        // Top face (cyan)
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
+        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // bottom right
+        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // bottom left
+
+        // Bottom face (magenta)
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // top left
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // top right
+        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
+        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength  // bottom left
+    };
+
+    GLfloat colors[] =
+    {
+        // Front face
+        1.0f, 0.0f, 0.0f, // Red
+        1.0f, 0.0f, 0.0f, // Red
+        1.0f, 0.0f, 0.0f, // Red
+        1.0f, 0.0f, 0.0f, // Red
+
+        // Back face
+        0.0f, 1.0f, 0.0f, // Green
+        0.0f, 1.0f, 0.0f, // Green
+        0.0f, 1.0f, 0.0f, // Green
+        0.0f, 1.0f, 0.0f, // Green
+
+        // Left face
+        0.0f, 0.0f, 1.0f, // Blue
+        0.0f, 0.0f, 1.0f, // Blue
+        0.0f, 0.0f, 1.0f, // Blue
+        0.0f, 0.0f, 1.0f, // Blue
+
+        // Right face
+        1.0f, 1.0f, 0.0f, // Yellow
+        1.0f, 1.0f, 0.0f, // Yellow
+        1.0f, 1.0f, 0.0f, // Yellow
+        1.0f, 1.0f, 0.0f, // Yellow
+
+        // Top face
+        0.0f, 1.0f, 1.0f, // Cyan
+        0.0f, 1.0f, 1.0f, // Cyan
+        0.0f, 1.0f, 1.0f, // Cyan
+        0.0f, 1.0f, 1.0f, // Cyan
+
+        // Bottom face
+        1.0f, 0.0f, 1.0f, // Magenta
+        1.0f, 0.0f, 1.0f, // Magenta
+        1.0f, 0.0f, 1.0f, // Magenta
+        1.0f, 0.0f, 1.0f  // Magenta
+    };
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+
+    glVertexPointer(3, GL_FLOAT, 0, vertices);
+    glColorPointer(3, GL_FLOAT, 0, colors);
+
+    glDrawArrays(GL_QUADS, 0, 24);
+
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
 }
